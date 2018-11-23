@@ -1,0 +1,28 @@
+一. 整个工程框架如下
+数据模块层：负责所有相关环境数据的收集和上传
+数据收集层：负责收集各个模块的数据
+路由层：负责将环境数据分类到对应的用户行为中，确定用户此时的状态
+状态层：负责灯光状态的记录，并最终决定灯光的参数设置
+发送层：发送参数设置请求给虚拟环境
+
+二. 各个层通信协议
+1. 数据模块层返回值规定:
+1.1. 用户情绪检测模块:
+返回值: List[Double] when emotion detected / None when no face emotion detected
+含义:  数据的每个维度代表相应情绪的可能
+
+1.2. 疲劳检测模块:
+返回值: Double when tired status detected / None when no tired status infomation
+含义: 返回值为处于0-1的浮点数，用来标识用户的疲劳程度
+
+1.3: Occupancy检测模块:
+返回值: Bool
+含义: 当传感器周围有人的时候，返回正值
+
+1.4: 室内气候环境检测模块:
+返回值:Dict{"temperature": Double,"humidity": Double,"co2": Int}
+含义: 返回室内的温度，湿度，co2含量
+
+1.5: ...
+
+2.数据收集层返回值规定

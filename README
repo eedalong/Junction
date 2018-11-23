@@ -9,7 +9,7 @@
 1. 数据模块层返回值规定:
 Class ModuleA:
     # this interface must be defined for each module
-    def getData(siteID,sensorID,timeStamp):
+    def getData(siteID,sensorID,startTimeStamp,endTimeStamp):
         # your own code
 
 1.1. 用户情绪检测模块:

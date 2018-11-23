@@ -11,20 +11,24 @@ Class ModuleA:
     # this interface must be defined for each module
     def getData(siteID,sensorID,timeStamp):
         # your own code
-      
+
 1.1. 用户情绪检测模块:
+模块名: UserEmotion
 返回值: List[Double] when emotion detected / None when no face emotion detected
 含义:  数据的每个维度代表相应情绪的可能
 
 1.2. 疲劳检测模块:
+模块名: UserTired
 返回值: Double when tired status detected / None when no tired status infomation
 含义: 返回值为处于0-1的浮点数，用来标识用户的疲劳程度
 
 1.3: Occupancy检测模块:
+模块名: Occupancy
 返回值: Bool
 含义: 当传感器周围有人的时候，返回True,否则返回False
 
 1.4: 室内气候环境检测模块:
+模块名: InnerClimate
 返回值:Dict{"temperature": Double,"humidity": Double,"co2": Int}
 含义: 返回室内的温度，湿度，co2含量
 

@@ -2,6 +2,7 @@
 
 # 导入系统库并定义辅助函数
 import cv2
+
 import base64
 from pprint import pformat
 from UserEmotion.PythonSDK.facepp import API
@@ -37,12 +38,19 @@ def draw_result(img, result):
         cv2.rectangle(img, (x1,y1), (x2,y2), (255, 0, 0))
         # Draw the landmarks
         face_landmark = face[u'landmark']
+        # print(face_landmark)
+        left_eye = [face_landmark[u'left_eye_left_corner'][u'x'], face_landmark[u'left_eye_top'][u'y'],
+                    face_landmark[u'left_eye_right_corner'][u'x'], face_landmark[u'left_eye_bottom'][u'y']]
+        right_eye = [face_landmark[u'right_eye_left_corner'][u'x'], face_landmark[u'right_eye_top'][u'y'],
+                    face_landmark[u'right_eye_right_corner'][u'x'], face_landmark[u'right_eye_bottom'][u'y']]
+        cv2.rectangle(img, (left_eye[0], left_eye[1]), (left_eye[2], left_eye[3]), (255, 0, 0))
+        cv2.rectangle(img, (right_eye[0], right_eye[1]), (right_eye[2], right_eye[3]), (255, 0, 0))
 
-        # Draw the attributes
+        # Draw ethe attributes
         face_attributes = face[u'attributes']
         face_emotion = face_attributes[u'emotion']
-        print (face_emotion)
-        print (face_emotion.values())
+        # print (face_emotion)
+        # print (face_emotion.values())
         emotion = max(face_emotion, key=face_emotion.get)
         emotion_score = face_emotion[emotion]
         cv2.putText(img,"{}:{:.1f}".format(emotion, emotion_score), (x1,y1-40), cv2.FONT_HERSHEY_COMPLEX,
@@ -71,6 +79,7 @@ class UserEmotion():
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 320);
 
     def _result_postprocessing(self, result):
+
         result_post = []
         faces = result[u'faces']
         for i in range(len(faces)):
@@ -83,7 +92,7 @@ class UserEmotion():
             x2 = x1 + face_rectangle[u'width']
             y2 = y1 + face_rectangle[u'height']
             # bbox : [x1, y1, x2, y2]
-            face_info['bbox'] = [x1, y1, x2, y2]
+            # face_info['bbox'] = [x1, y1, x2, y2]
 
             # The landmarks
             face_landmark = face[u'landmark']
@@ -97,18 +106,26 @@ class UserEmotion():
             # emotion : ['neutral', 'disgust', 'anger', 'surprise', 'fear', 'sadness', 'happiness']
             face_info['emotion'] = face_emotion.values()
 
+            # The quality
+            faceConfidence = face_attributes[u'facequality'][u'value']
+            face_info['faceConfidence'] = faceConfidence
+
             # The headpose
             face_headpose = face_attributes[u'headpose']
             pitch_angle = face_headpose[u'pitch_angle']
             roll_angle = face_headpose[u'roll_angle']
             yaw_angle = face_headpose[u'yaw_angle']
             # headpose : [pitch_angle, roll_angle, yaw_angle]
-            face_info['headpose'] = [pitch_angle, roll_angle, yaw_angle]
+            # face_info['headpose'] = [pitch_angle, roll_angle, yaw_angle]
             face_mouthstatus = face_attributes[u'mouthstatus']
             mouthopenstatus = face_mouthstatus[u'open']
 
             result_post.append(face_info)
 
+        if len(result_post) == 0:
+            result_post = None
+        else:
+            result_post = result_post[0]
         return result_post
 
     def _draw_result(self, img, result):
@@ -185,6 +202,7 @@ if __name__ == '__main__':
         retval, buffer = cv2.imencode('.jpg', frame)
         frame_base64 = base64.b64encode(buffer)
         # frame_base64 = base64.b64encode(frame)
+        print('Sending image...')
         res = api.detect(image_base64=frame_base64, return_landmark=2,
                          return_attributes="gender,age,smiling,headpose,facequality,"
                                            "blur,eyestatus,emotion,ethnicity,beauty,"

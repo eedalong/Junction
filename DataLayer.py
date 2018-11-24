@@ -3,27 +3,24 @@ from InnerClimate import InnerClimate
 from Occupancy import Occupancy
 from UserTired import UserTired
 class DataLayer:
-    def __init__(self,siteID,sensorID,startTimeStamp,endTimeStamp):
+    def __init__(self,siteID,sensorID,):
         self.siteID = siteID
         self.sensorID = sensorID
-        self.startTimeStamp = startTimeStamp
-        self.endTimeStamp = endTimeStamp
-
-    def collectData(self):
+    def collectData(self,startTimeStamp,endTimeStamp):
         dataCollection = {}
-        useremotion = UserEmotion.getData(self.siteID,self.sensorID,self.startTimeStamp,self.endTimeStamp)
+        useremotion = UserEmotion.getData(self.siteID,self.sensorID,startTimeStamp,endTimeStamp)
         if useremotion:
             dataCollection["UserEmotion"] = useremotion
-        usertired  = UserTired.getData(self.siteID,self.sensorID,self.startTimeStamp,self.endTimeStamp)
+        usertired  = UserTired.getData(self.siteID,self.sensorID,startTimeStamp,endTimeStamp)
         if usertired:
             dataCollection["TiredStatus"] = usertired
-        occupancy = Occupancy.getData(self.siteID,self.sensorID,self.startTimeStamp,self.endTimeStamp)
+        occupancy = Occupancy.getData(self.siteID,self.sensorID,startTimeStamp,endTimeStamp)
         if Occupancy:
             dataCollection["Occupancy"] = occupancy
-        innerclimate = InnerClimate.getData(self.siteID,self.sensorID,self.startTimeStamp,self.endTimeStamp)
+        innerclimate = InnerClimate.getData(self.siteID,self.sensorID,startTimeStamp,endTimeStamp)
         if innerclimate:
             dataCollection["InnerClimate"] = innerclimate
         return dataCollection
-    
+
 
 

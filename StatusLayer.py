@@ -35,7 +35,7 @@ UserStatus = {
 
 
 class DecideStatus:
-    def __init__(self):
+    def __init__(self,timeInterval,historyLength):
         # record the history user status and light status
         self.timeInterval = 10
         self.timeNow = 0,

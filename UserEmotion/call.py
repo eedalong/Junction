@@ -2,7 +2,7 @@
 
 # 导入系统库并定义辅助函数
 import cv2
-
+import time
 import base64
 from pprint import pformat
 from UserEmotion.PythonSDK.facepp import API
@@ -27,6 +27,9 @@ def printFuctionTitle(title):
 
 def draw_result(img, result):
     faces = result[u'faces']
+    time_used = result[u'time_used']
+    cv2.putText(img, "time_used:{:0f} ms".format(time_used), (0,30), cv2.FONT_HERSHEY_COMPLEX,
+                0.7, (0, 0, 255), 1)
     for i in range(len(faces)):
         face = faces[i]
         # Draw the bounding box
@@ -48,6 +51,9 @@ def draw_result(img, result):
 
         # Draw ethe attributes
         face_attributes = face[u'attributes']
+        faceConfidence = face_attributes[u'facequality'][u'value']
+        cv2.putText(img, "faceConfidence:{:.1f} ".format(faceConfidence),(x1, y1+20), cv2.FONT_HERSHEY_COMPLEX,
+                    0.7, (0, 0, 255), 1)
         face_emotion = face_attributes[u'emotion']
         # print (face_emotion)
         # print (face_emotion.values())
@@ -63,20 +69,41 @@ def draw_result(img, result):
                     (x1, y1-20), cv2.FONT_HERSHEY_COMPLEX,0.7, (0, 0, 255), 1)
         face_mouthstatus = face_attributes[u'mouthstatus']
         mouthopenstatus = face_mouthstatus[u'open']
-        cv2.putText(img, "mouth open:{:.1f} ".format(mouthopenstatus,),(x1, y1), cv2.FONT_HERSHEY_COMPLEX,
+        cv2.putText(img, "mouth open:{:.1f} ".format(mouthopenstatus), (x1, y1), cv2.FONT_HERSHEY_COMPLEX,
                     0.7, (0, 0, 255), 1)
 
 
 class UserEmotion():
 
-    def __init__(self):
+    def __init__(self, eye_length = 6):
         self.api = API()
+        self.left_eye_size = []
+        self.right_eye_size = []
+        self.left_max_size = -1
+        self.right_max_size = -1
+        self.eye_length = eye_length
         self._init_camera()
+        # cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
 
     def _init_camera(self):
         self.cap = cv2.VideoCapture(0)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640);
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 320);
+
+
+    def _eye_size_adapt(self, left_eye, right_eye):
+
+        assert len(self.left_eye_size) == len(self.right_eye_size)
+        if len(self.left_eye_size) < self.eye_length:
+            self.left_eye_size.append(left_eye)
+            self.right_eye_size.append(right_eye)
+            self.left_max_size = max(self.left_eye_size)
+            self.right_max_size = max(self.right_eye_size)
+        else:
+            self.left_eye_size.pop(0)
+            self.left_eye_size.append(left_eye)
+            self.right_eye_size.pop(0)
+            self.right_eye_size.append(right_eye)
 
     def _result_postprocessing(self, result):
 
@@ -96,8 +123,22 @@ class UserEmotion():
 
             # The landmarks
             face_landmark = face[u'landmark']
-            # face_info['landmark'] = face_landmark
+            left_eye_coor = [face_landmark[u'left_eye_left_corner'][u'x'], face_landmark[u'left_eye_top'][u'y'],
+                        face_landmark[u'left_eye_right_corner'][u'x'], face_landmark[u'left_eye_bottom'][u'y']]
+            right_eye_coor = [face_landmark[u'right_eye_left_corner'][u'x'], face_landmark[u'right_eye_top'][u'y'],
+                         face_landmark[u'right_eye_right_corner'][u'x'], face_landmark[u'right_eye_bottom'][u'y']]
+            left_eye = (left_eye_coor[2] - left_eye_coor[0]) * (left_eye_coor[3] - left_eye_coor[1])
+            right_eye = (right_eye_coor[2] - right_eye_coor[0]) * (right_eye_coor[3] - right_eye_coor[1])
 
+            self._eye_size_adapt(left_eye, right_eye)
+            # print ("Left {}, Max {}\nRight {}, Max {}".format(self.left_eye_size, self.left_max_size,
+            #                                           self.right_eye_size, self.right_max_size))
+            left_ratio = [(1 - x/float(self.left_max_size)) for x in self.left_eye_size]
+            right_ratio = [(1 - x/float(self.right_max_size)) for x in self.right_eye_size]
+            ratio = left_ratio + right_ratio
+            eye_ratio = sum(ratio)/len(ratio)
+            # print ("Left Ratio {}\nRight Ratio {}\nEye Ratio :{}".format(left_ratio, right_ratio, eye_ratio))
+            face_info['tired'] = eye_ratio
             # The attributes
             face_attributes = face[u'attributes']
 
@@ -109,16 +150,6 @@ class UserEmotion():
             # The quality
             faceConfidence = face_attributes[u'facequality'][u'value']
             face_info['faceConfidence'] = faceConfidence
-
-            # The headpose
-            face_headpose = face_attributes[u'headpose']
-            pitch_angle = face_headpose[u'pitch_angle']
-            roll_angle = face_headpose[u'roll_angle']
-            yaw_angle = face_headpose[u'yaw_angle']
-            # headpose : [pitch_angle, roll_angle, yaw_angle]
-            # face_info['headpose'] = [pitch_angle, roll_angle, yaw_angle]
-            face_mouthstatus = face_attributes[u'mouthstatus']
-            mouthopenstatus = face_mouthstatus[u'open']
 
             result_post.append(face_info)
 
@@ -170,15 +201,16 @@ class UserEmotion():
         ret, frame = self.cap.read()
         retval, buffer = cv2.imencode('.jpg', frame)
         frame_base64 = base64.b64encode(buffer)
+        tic = time.time()
         res = self.api.detect(image_base64=frame_base64, return_landmark=2,
                               return_attributes="gender,age,smiling,headpose,facequality,"
                                                 "blur,eyestatus,emotion,ethnicity,beauty,"
                                                 "mouthstatus,skinstatus")
-
+        print('Consume {:0f} s'.format(time.time() - tic))
         result = self._result_postprocessing(res)
         # self._draw_result(frame, res)
         # cv2.imshow('frame', frame)
-        # cv2.waitKey(0)
+        # cv2.waitKey()
         return result
 
     def close(self):
@@ -203,12 +235,14 @@ if __name__ == '__main__':
         frame_base64 = base64.b64encode(buffer)
         # frame_base64 = base64.b64encode(frame)
         print('Sending image...')
+        tic = time.time()
         res = api.detect(image_base64=frame_base64, return_landmark=2,
                          return_attributes="gender,age,smiling,headpose,facequality,"
                                            "blur,eyestatus,emotion,ethnicity,beauty,"
                                            "mouthstatus,skinstatus")
+        # print('Consume {:0f} ms'.format(time.time() - tic))
         draw_result(frame, res)
-
+        print('Consume {:0f} s'.format(time.time() - tic))
         # Display the resulting frame
         cv2.imshow('frame', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -218,83 +252,3 @@ if __name__ == '__main__':
     cap.release()
     cv2.destroyAllWindows()
 
-# ----------------------------------------------------------人脸识别部分(单张图片)-----------------------------------------
-
-# img = cv2.imread(segment_img)
-# with open(segment_img, "rb") as f:
-#     data = f.read()
-#     img_base64 = data.encode("base64")
-#
-# # 人脸检测：https://console.faceplusplus.com.cn/documents/4888373
-# res = api.detect(image_base64=img_base64, return_landmark=2,
-#                  return_attributes="gender,age,smiling,headpose,facequality,"
-#                                                        "blur,eyestatus,emotion,ethnicity,beauty,"
-#                                                        "mouthstatus,skinstatus")
-# print_result(printFuctionTitle("人脸检测"), res)
-# draw_result(img, res)
-# cv2.imshow("a", img)
-# cv2.waitKey(0)
-
-# 人脸比对：https://console.faceplusplus.com.cn/documents/4887586
-# compare_res = api.compare(image_file1=File(face_search_img), image_file2=File(face_search_img))
-# print_result("compare", compare_res)
-
-# 人脸搜索：https://console.faceplusplus.com.cn/documents/4888381
-# 人脸搜索步骤
-# 1,创建faceSet:用于存储人脸信息(face_token)
-# 2,向faceSet中添加人脸信息(face_token)
-# 3，开始搜索
-
-# 删除无用的人脸库，这里删除了，如果在项目中请注意是否要删除
-# api.faceset.delete(outer_id='faceplusplus', check_empty=0)
-# # 1.创建一个faceSet
-# ret = api.faceset.create(outer_id='faceplusplus')
-#
-# # 2.向faceSet中添加人脸信息(face_token)
-# faceResStr=""
-# res = api.detect(image_file=File(faceSet_img))
-# faceList = res["faces"]
-# for index in range(len(faceList)):
-#     if(index==0):
-#         faceResStr = faceResStr + faceList[index]["face_token"]
-#     else:
-#         faceResStr = faceResStr + ","+faceList[index]["face_token"]
-#
-# api.faceset.addface(outer_id='faceplusplus', face_tokens=faceResStr)
-#
-# # 3.开始搜索相似脸人脸信息
-# search_result = api.search(image_file=File(face_search_img), outer_id='faceplusplus')
-# print_result('search', search_result)
-
-# -----------------------------------------------------------人体识别部分-------------------------------------------
-
-# 人体抠像:https://console.faceplusplus.com.cn/documents/10071567
-# segment_res = api.segment(image_file=File(segment_img))
-# f = open('./imgResource/demo-segment.b64', 'w')
-# f.write(segment_res["result"])
-# f.close()
-# print_result("segment", segment_res)
-# # 开始抠像
-#
-# PythonSDK.ImagePro.ImageProCls.getSegmentImg("./imgResource/demo-segment.b64")
-
-# -----------------------------------------------------------证件识别部分-------------------------------------------
-# 身份证识别:https://console.faceplusplus.com.cn/documents/5671702
-# ocrIDCard_res = api.ocridcard(image_url="https://gss0.bdstatic.com/94o3dSag_xI4khGkpoWK1HF6hhy/baike/"
-#                                         "c0%3Dbaike80%2C5%2C5%2C80%2C26/sign=7a16a1be19178a82da3177f2976a18e8"
-#                                         "/902397dda144ad34a1b2dcf5d7a20cf431ad85b7.jpg")
-# print_result('ocrIDCard', ocrIDCard_res)
-
-# 银行卡识别:https://console.faceplusplus.com.cn/documents/10069553
-# ocrBankCard_res = api.ocrbankcard(image_url="http://pic.5tu.cn/uploads/allimg/1107/191634534200.jpg")
-# print_result('ocrBankCard', ocrBankCard_res)
-
-# -----------------------------------------------------------图像识别部分-------------------------------------------
-# 人脸融合：https://console.faceplusplus.com.cn/documents/20813963
-# template_rectangle参数中的数据要通过人脸检测api来获取
-# mergeFace_res = api.mergeface(template_file=File(segment_img), merge_file=File(merge_img),
-#                               template_rectangle="130,180,172,172")
-# print_result("mergeFace", mergeFace_res)
-#
-# # 开始融合
-# PythonSDK.ImagePro.ImageProCls.getMergeImg(mergeFace_res["result"])

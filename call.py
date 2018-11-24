@@ -4,9 +4,6 @@
 import cv2
 import base64
 from pprint import pformat
-# import sys
-# print(sys.version)
-# import PythonSDK
 from PythonSDK.facepp import API,File
 
 # 导入图片处理类
@@ -45,6 +42,8 @@ def draw_result(img, result):
         # Draw the attributes
         face_attributes = face[u'attributes']
         face_emotion = face_attributes[u'emotion']
+        print (face_emotion)
+        print (face_emotion.values())
         emotion = max(face_emotion, key=face_emotion.get)
         emotion_score = face_emotion[emotion]
         cv2.putText(img,"{}:{:.1f}".format(emotion, emotion_score), (x1,y1-40), cv2.FONT_HERSHEY_COMPLEX,
@@ -62,37 +61,144 @@ def draw_result(img, result):
 
 
 
+class FaceDetector():
+
+    def __init__(self):
+        self.api = API()
+        self._init_camera()
+
+    def _init_camera(self):
+        self.cap = cv2.VideoCapture(0)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640);
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 320);
+
+    def _result_postprocessing(self, result):
+        result_post = []
+        faces = result[u'faces']
+        for i in range(len(faces)):
+            face = faces[i]
+            face_info = {}
+            # The bounding box
+            face_rectangle = face[u'face_rectangle']
+            x1 = face_rectangle[u'left']
+            y1 = face_rectangle[u'top']
+            x2 = x1 + face_rectangle[u'width']
+            y2 = y1 + face_rectangle[u'height']
+            # bbox : [x1, y1, x2, y2]
+            face_info['bbox'] = [x1, y1, x2, y2]
+
+            # The landmarks
+            face_landmark = face[u'landmark']
+            # face_info['landmark'] = face_landmark
+
+            # The attributes
+            face_attributes = face[u'attributes']
+
+            # The emotion
+            face_emotion = face_attributes[u'emotion']
+            # emotion : ['neutral', 'disgust', 'anger', 'surprise', 'fear', 'sadness', 'happiness']
+            face_info['emotion'] = face_emotion.values()
+
+            # The headpose
+            face_headpose = face_attributes[u'headpose']
+            pitch_angle = face_headpose[u'pitch_angle']
+            roll_angle = face_headpose[u'roll_angle']
+            yaw_angle = face_headpose[u'yaw_angle']
+            # headpose : [pitch_angle, roll_angle, yaw_angle]
+            face_info['headpose'] = [pitch_angle, roll_angle, yaw_angle]
+            face_mouthstatus = face_attributes[u'mouthstatus']
+            mouthopenstatus = face_mouthstatus[u'open']
+
+            result_post.append(face_info)
+
+        return result_post
+
+    def _draw_result(self, img, result):
+        faces = result[u'faces']
+        for i in range(len(faces)):
+            face = faces[i]
+            # Draw the bounding box
+            face_rectangle = face[u'face_rectangle']
+            x1 = face_rectangle[u'left']
+            y1 = face_rectangle[u'top']
+            x2 = x1 + face_rectangle[u'width']
+            y2 = y1 + face_rectangle[u'height']
+            cv2.rectangle(img, (x1,y1), (x2,y2), (255, 0, 0))
+            # Draw the landmarks
+            face_landmark = face[u'landmark']
+
+            # Draw the attributes
+            face_attributes = face[u'attributes']
+            face_emotion = face_attributes[u'emotion']
+            print (face_emotion)
+            print (face_emotion.values())
+            emotion = max(face_emotion, key=face_emotion.get)
+            emotion_score = face_emotion[emotion]
+            cv2.putText(img,"{}:{:.1f}".format(emotion, emotion_score), (x1,y1-40), cv2.FONT_HERSHEY_COMPLEX,
+                        0.7, (0,0,255), 1)
+            face_headpose = face_attributes[u'headpose']
+            pitch_angle = face_headpose[u'pitch_angle']
+            roll_angle = face_headpose[u'roll_angle']
+            yaw_angle = face_headpose[u'yaw_angle']
+            cv2.putText(img, "yaw:{:.0f} roll:{:.0f} pitch:{:.0f}".format(yaw_angle, roll_angle, pitch_angle),
+                        (x1, y1-20), cv2.FONT_HERSHEY_COMPLEX,0.7, (0, 0, 255), 1)
+            face_mouthstatus = face_attributes[u'mouthstatus']
+            mouthopenstatus = face_mouthstatus[u'open']
+            cv2.putText(img, "mouth open:{:.1f} ".format(mouthopenstatus,),(x1, y1), cv2.FONT_HERSHEY_COMPLEX,
+                        0.7, (0, 0, 255), 1)
 
 
-# 初始化对象，进行api的调用工作
-api = API()
-# -----------------------------------------------------------人脸识别部分-------------------------------------------
+    def detect(self):
+        # Convert the array image to base64
+        ret, frame = self.cap.read()
+        retval, buffer = cv2.imencode('.jpg', frame)
+        frame_base64 = base64.b64encode(buffer)
+        res = self.api.detect(image_base64=frame_base64, return_landmark=2,
+                              return_attributes="gender,age,smiling,headpose,facequality,"
+                                                "blur,eyestatus,emotion,ethnicity,beauty,"
+                                                "mouthstatus,skinstatus")
 
-cap = cv2.VideoCapture(0)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640);
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 320);
+        result = self._result_postprocessing(res)
+        # self._draw_result(frame, res)
+        # cv2.imshow('frame', frame)
+        # cv2.waitKey(0)
+        return result
 
-while(True):
-    # Capture frame-by-frame
-    ret, frame = cap.read()
-    cnt = cv2.imencode('.png',frame)[1]
-    retval, buffer = cv2.imencode('.jpg', frame)
-    frame_base64 = base64.b64encode(buffer)
-    # frame_base64 = base64.b64encode(frame)
-    res = api.detect(image_base64=frame_base64, return_landmark=2,
-                     return_attributes="gender,age,smiling,headpose,facequality,"
-                                       "blur,eyestatus,emotion,ethnicity,beauty,"
-                                       "mouthstatus,skinstatus")
-    draw_result(frame, res)
+    def close(self):
+        self.cap.release()
+        cv2.destroyAllWindows()
 
-    # Display the resulting frame
-    cv2.imshow('frame',frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
 
-# When everything done, release the capture
-cap.release()
-cv2.destroyAllWindows()
+if __name__ == '__main__':
+    # 初始化对象，进行api的调用工作
+    api = API()
+    # -----------------------------------------------------------人脸识别部分-------------------------------------------
+
+    cap = cv2.VideoCapture(0)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640);
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 320);
+
+    while (True):
+        # Capture frame-by-frame
+        ret, frame = cap.read()
+        cnt = cv2.imencode('.png', frame)[1]
+        retval, buffer = cv2.imencode('.jpg', frame)
+        frame_base64 = base64.b64encode(buffer)
+        # frame_base64 = base64.b64encode(frame)
+        res = api.detect(image_base64=frame_base64, return_landmark=2,
+                         return_attributes="gender,age,smiling,headpose,facequality,"
+                                           "blur,eyestatus,emotion,ethnicity,beauty,"
+                                           "mouthstatus,skinstatus")
+        draw_result(frame, res)
+
+        # Display the resulting frame
+        cv2.imshow('frame', frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    # When everything done, release the capture
+    cap.release()
+    cv2.destroyAllWindows()
 
 # ----------------------------------------------------------人脸识别部分(单张图片)-----------------------------------------
 

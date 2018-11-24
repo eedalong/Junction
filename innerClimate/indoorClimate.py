@@ -45,6 +45,6 @@ if __name__ == "__main__":
 
 	print(siteID, sensorID, timeDateFrom, timeDateTo)
 
-	bool_occupancy = Obj.getData(siteID, sensorID, timeDateFrom, timeDateTo)
-	print("bool_occupancy: ")
-	print(bool_occupancy)
+	indoor_climate = Obj.getData(siteID, sensorID, timeDateFrom, timeDateTo)
+	print("indoor_climate: ")
+	print(indoor_climate)

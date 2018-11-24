@@ -1,3 +1,4 @@
+#coding:utf-8
 import json
 import requests
 
@@ -52,7 +53,7 @@ if __name__ == "__main__":
 	Obj = Occupancy(key)
 
 	siteID = "site_exp"
-	sensorID = "b1239623-62b1-4a45-bf5a-b8b62056e372"
+	sensorID = "40eba976-a328-47ba-900b-500f53a52f87"
 	timeDate = "2018-01-08T00:58:00.589234Z"
 
 	print(siteID, sensorID, timeDate)
@@ -62,9 +63,4 @@ if __name__ == "__main__":
 	print(bool_occupancy)
 
 
-
-
-		
-
-		
 

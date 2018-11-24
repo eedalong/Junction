@@ -4,10 +4,9 @@
 import cv2
 import base64
 from pprint import pformat
-from PythonSDK.facepp import API,File
+from UserEmotion.PythonSDK.facepp import API
 
 # 导入图片处理类
-import PythonSDK.ImagePro
 
 # 以下四项是dmeo中用到的图片资源，可根据需要替换
 detech_img_url = 'http://bj-mc-prod-asset.oss-cn-beijing.aliyuncs.com/mc-official/images/face/demo-pic11.jpg'
@@ -60,8 +59,7 @@ def draw_result(img, result):
                     0.7, (0, 0, 255), 1)
 
 
-
-class FaceDetector():
+class UserEmotion():
 
     def __init__(self):
         self.api = API()
@@ -147,6 +145,8 @@ class FaceDetector():
             cv2.putText(img, "mouth open:{:.1f} ".format(mouthopenstatus,),(x1, y1), cv2.FONT_HERSHEY_COMPLEX,
                         0.7, (0, 0, 255), 1)
 
+    def getData(self, siteID=None, sensorID=None, startTimeStamp=None, endTimeStamp=None):
+        return self.detect()
 
     def detect(self):
         # Convert the array image to base64

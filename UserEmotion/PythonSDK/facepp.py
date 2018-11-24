@@ -14,9 +14,9 @@ import itertools
 import mimetypes
 import time
 from collections import Iterable
-from PythonSDK.structures import ObjectDict
-from PythonSDK.compat import (basestring, str, numeric_types, enc, choose_boundary,
-                              Request, urlopen, HTTPError, URLError)
+from UserEmotion.PythonSDK.structures import ObjectDict
+from UserEmotion.PythonSDK.compat import (basestring, str, numeric_types, enc, choose_boundary,
+                                          Request, urlopen, HTTPError, URLError)
 
 import ssl
 ssl._create_default_https_context = ssl._create_unverified_context

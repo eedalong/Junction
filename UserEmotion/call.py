@@ -7,7 +7,7 @@ import time
 import base64
 from pprint import pformat
 from UserEmotion.PythonSDK.facepp import API
-
+import numpy as np
 # 导入图片处理类
 
 # 以下四项是dmeo中用到的图片资源，可根据需要替换
@@ -85,8 +85,10 @@ class UserEmotion():
 
     def _init_camera(self):
         self.cap = cv2.VideoCapture(0)
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 320)
+
+        #self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640);
+        #self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 320);
+
 
     def _eye_state_update(self, eye_ratio):
         if eye_ratio < 0.2:
@@ -188,7 +190,11 @@ class UserEmotion():
 
     def detect(self):
         # Convert the array image to base64
-        ret, frame = self.cap.read()
+        frame = None
+        sample = np.ndarray((4,5))
+        while not isinstance(frame,type(sample)):
+            ret, frame = self.cap.read()
+
         retval, buffer = cv2.imencode('.jpg', frame)
         frame_base64 = base64.b64encode(buffer)
         tic = time.time()

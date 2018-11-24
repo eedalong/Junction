@@ -1,6 +1,7 @@
 # -*- coding: UTF-8 -*-
 
 # 导入系统库并定义辅助函数
+from __future__ import division
 import cv2
 import time
 import base64
@@ -75,37 +76,45 @@ def draw_result(img, result):
 
 class UserEmotion():
 
-    def __init__(self, eye_length = 6):
+    def __init__(self, state_length = 6):
         self.api = API()
-        self.left_eye_size = []
-        self.right_eye_size = []
-        self.left_max_size = -1
-        self.right_max_size = -1
-        self.eye_length = eye_length
+        self.eye_state = []
+        self.mouth_state = []
+        self.state_length = state_length
         self._init_camera()
-        # cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
 
     def _init_camera(self):
         self.cap = cv2.VideoCapture(0)
+
         #self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640);
         #self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 320);
 
 
-    def _eye_size_adapt(self, left_eye, right_eye):
-
-        assert len(self.left_eye_size) == len(self.right_eye_size)
-        if len(self.left_eye_size) < self.eye_length:
-            self.left_eye_size.append(left_eye)
-            self.right_eye_size.append(right_eye)
-            self.left_max_size = max(self.left_eye_size)
-            self.right_max_size = max(self.right_eye_size)
+    def _eye_state_update(self, eye_ratio):
+        if eye_ratio < 0.2:
+            eye_state = 1
         else:
-            self.left_eye_size.pop(0)
-            self.left_eye_size.append(left_eye)
-            self.right_eye_size.pop(0)
-            self.right_eye_size.append(right_eye)
+            eye_state = 0
 
-    def _result_postprocessing(self, result):
+        if len(self.eye_state) < self.state_length:
+            self.eye_state.append(eye_state)
+        else:
+            self.eye_state.pop(0)
+            self.eye_state.append(eye_state)
+
+    def _mouth_state_update(self, mouth_ratio):
+        if mouth_ratio > 0.3:
+            mouth_state = 1
+        else:
+            mouth_state = 0
+
+        if len(self.mouth_state) < self.state_length:
+            self.mouth_state.append(mouth_state)
+        else:
+            self.mouth_state.pop(0)
+            self.mouth_state.append(mouth_state)
+
+    def _result_postprocessing(self,img, result):
 
         result_post = []
         faces = result[u'faces']
@@ -118,6 +127,7 @@ class UserEmotion():
             y1 = face_rectangle[u'top']
             x2 = x1 + face_rectangle[u'width']
             y2 = y1 + face_rectangle[u'height']
+            cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 0))
             # bbox : [x1, y1, x2, y2]
             # face_info['bbox'] = [x1, y1, x2, y2]
 
@@ -127,18 +137,30 @@ class UserEmotion():
                         face_landmark[u'left_eye_right_corner'][u'x'], face_landmark[u'left_eye_bottom'][u'y']]
             right_eye_coor = [face_landmark[u'right_eye_left_corner'][u'x'], face_landmark[u'right_eye_top'][u'y'],
                          face_landmark[u'right_eye_right_corner'][u'x'], face_landmark[u'right_eye_bottom'][u'y']]
-            left_eye = (left_eye_coor[2] - left_eye_coor[0]) * (left_eye_coor[3] - left_eye_coor[1])
-            right_eye = (right_eye_coor[2] - right_eye_coor[0]) * (right_eye_coor[3] - right_eye_coor[1])
+            left_eye_ratio = (left_eye_coor[3] - left_eye_coor[1])/float(left_eye_coor[2] - left_eye_coor[0])
+            right_eye_ratio = (right_eye_coor[3] - right_eye_coor[1])/float(right_eye_coor[2] - right_eye_coor[0])
+            eye_ratio = (left_eye_ratio + right_eye_ratio) / 2
+            self._eye_state_update(eye_ratio)
+            cv2.rectangle(img, (left_eye_coor[0], left_eye_coor[1]), (left_eye_coor[2], left_eye_coor[3]), (255, 0, 0))
+            cv2.putText(img, "{:.2f} ".format(left_eye_ratio),(left_eye_coor[0], left_eye_coor[1]), cv2.FONT_HERSHEY_COMPLEX,
+                        0.5, (0, 0, 255), 1)
+            cv2.rectangle(img, (right_eye_coor[0], right_eye_coor[1]), (right_eye_coor[2], right_eye_coor[3]), (255, 0, 0))
+            cv2.putText(img, "{:.2f} ".format(right_eye_ratio),(right_eye_coor[0], right_eye_coor[1]), cv2.FONT_HERSHEY_COMPLEX,
+                        0.5, (0, 0, 255), 1)
 
-            self._eye_size_adapt(left_eye, right_eye)
-            # print ("Left {}, Max {}\nRight {}, Max {}".format(self.left_eye_size, self.left_max_size,
-            #                                           self.right_eye_size, self.right_max_size))
-            left_ratio = [(1 - x/float(self.left_max_size)) for x in self.left_eye_size]
-            right_ratio = [(1 - x/float(self.right_max_size)) for x in self.right_eye_size]
-            ratio = left_ratio + right_ratio
-            eye_ratio = sum(ratio)/len(ratio)
-            # print ("Left Ratio {}\nRight Ratio {}\nEye Ratio :{}".format(left_ratio, right_ratio, eye_ratio))
-            face_info['tired'] = eye_ratio
+            mouth_coor = [face_landmark[u'mouth_left_corner'][u'x'], face_landmark[u'mouth_upper_lip_bottom'][u'y'],
+                        face_landmark[u'mouth_right_corner'][u'x'], face_landmark[u'mouth_lower_lip_top'][u'y']]
+            mouth_ratio = (mouth_coor[3] - mouth_coor[1]) / float(mouth_coor[2] - mouth_coor[0])
+            self._mouth_state_update(mouth_ratio)
+            cv2.rectangle(img, (mouth_coor[0], mouth_coor[1]), (mouth_coor[2], mouth_coor[3]), (255, 0, 0))
+            cv2.putText(img, "{:.2f} ".format(mouth_ratio,),(mouth_coor[0], mouth_coor[1]), cv2.FONT_HERSHEY_COMPLEX,
+                        0.5, (0, 0, 255), 1)
+            eye_score = sum(self.eye_state)/ len(self.eye_state)
+            mouth_score = sum(self.mouth_state)/ len(self.mouth_state)
+            tired_score = 0.2*eye_score + 0.8*mouth_score
+            face_info['tired'] = tired_score
+            print ("Eye State : {}\nMouth State : {}".format(self.eye_state, self.mouth_state))
+
             # The attributes
             face_attributes = face[u'attributes']
 
@@ -146,11 +168,15 @@ class UserEmotion():
             face_emotion = face_attributes[u'emotion']
             # emotion : ['neutral', 'disgust', 'anger', 'surprise', 'fear', 'sadness', 'happiness']
             face_info['emotion'] = face_emotion.values()
-
+            emotion = max(face_emotion, key=face_emotion.get)
+            emotion_score = face_emotion[emotion]
+            cv2.putText(img,"{}:{:.1f}".format(emotion, emotion_score), (x1,y1), cv2.FONT_HERSHEY_COMPLEX,
+                        0.5, (0,0,255), 1)
             # The quality
             faceConfidence = face_attributes[u'facequality'][u'value']
             face_info['faceConfidence'] = faceConfidence
-
+            cv2.putText(img, "faceConfidence:{:.1f} ".format(faceConfidence), (x1, y1 + 20), cv2.FONT_HERSHEY_COMPLEX,
+                        0.5, (0, 0, 255), 1)
             result_post.append(face_info)
 
         if len(result_post) == 0:
@@ -158,40 +184,6 @@ class UserEmotion():
         else:
             result_post = result_post[0]
         return result_post
-
-    def _draw_result(self, img, result):
-        faces = result[u'faces']
-        for i in range(len(faces)):
-            face = faces[i]
-            # Draw the bounding box
-            face_rectangle = face[u'face_rectangle']
-            x1 = face_rectangle[u'left']
-            y1 = face_rectangle[u'top']
-            x2 = x1 + face_rectangle[u'width']
-            y2 = y1 + face_rectangle[u'height']
-            cv2.rectangle(img, (x1,y1), (x2,y2), (255, 0, 0))
-            # Draw the landmarks
-            face_landmark = face[u'landmark']
-
-            # Draw the attributes
-            face_attributes = face[u'attributes']
-            face_emotion = face_attributes[u'emotion']
-            print (face_emotion)
-            print (face_emotion.values())
-            emotion = max(face_emotion, key=face_emotion.get)
-            emotion_score = face_emotion[emotion]
-            cv2.putText(img,"{}:{:.1f}".format(emotion, emotion_score), (x1,y1-40), cv2.FONT_HERSHEY_COMPLEX,
-                        0.7, (0,0,255), 1)
-            face_headpose = face_attributes[u'headpose']
-            pitch_angle = face_headpose[u'pitch_angle']
-            roll_angle = face_headpose[u'roll_angle']
-            yaw_angle = face_headpose[u'yaw_angle']
-            cv2.putText(img, "yaw:{:.0f} roll:{:.0f} pitch:{:.0f}".format(yaw_angle, roll_angle, pitch_angle),
-                        (x1, y1-20), cv2.FONT_HERSHEY_COMPLEX,0.7, (0, 0, 255), 1)
-            face_mouthstatus = face_attributes[u'mouthstatus']
-            mouthopenstatus = face_mouthstatus[u'open']
-            cv2.putText(img, "mouth open:{:.1f} ".format(mouthopenstatus,),(x1, y1), cv2.FONT_HERSHEY_COMPLEX,
-                        0.7, (0, 0, 255), 1)
 
     def getData(self, siteID=None, sensorID=None, startTimeStamp=None, endTimeStamp=None):
         return self.detect()
@@ -211,11 +203,11 @@ class UserEmotion():
                                                 "blur,eyestatus,emotion,ethnicity,beauty,"
                                                 "mouthstatus,skinstatus")
         print('Consume {:0f} s'.format(time.time() - tic))
-        result = self._result_postprocessing(res)
-        # self._draw_result(frame, res)
-        # cv2.imshow('frame', frame)
-        # cv2.waitKey()
-        return result
+        result = self._result_postprocessing(frame, res)
+        print (result)
+        cv2.imshow('frame', frame)
+        cv2.waitKey()
+        # return result
 
     def close(self):
         self.cap.release()

@@ -1,5 +1,5 @@
-from Router import Router
 import time
+import Configs
 
 StatusList = [
     # FocusOffDesk contains 2 main situation: sleep on the desk or the user's focus is not on the testkable
@@ -19,13 +19,13 @@ StatusList = [
 UserStatus = {
     # FocusOffDesk contains 2 main situation: sleep on the desk or the user's focus is not on the testkable
     # this mode is set to save the energy
-    "FocusOffWork": {"startTime": 0, "startValue":{"level":20, "color":200},"currentValue": {"level": 20, "color": 2000}, "targetValue": {"level": 20, "color": 3000}},
-    "Tired": {"startTime": 0,"startValue":{"level":20, "color":200}, "current": {"level": 20, "color": 2000}, "targetValue": {"level": 60, "color": 2000}},
+    "FocusOffWork": {"startTime": 0, "startValue":{"level":20, "color":200},"currentValue": {"level": 20, "color": 2000}, "targetValue": {"level": 30, "color": 2000}},
+    "Tired": {"startTime": 0,"startValue":{"level":20, "color":200}, "current": {"level": 20, "color": 2000}, "targetValue": {"level": 90, "color": 6500}},
     # if the user is focusing on work, then just keep the setting of the light
     # if the user is once detected in focusing status, light status should be caution to change
-    "FouseOnWork": {"startTime": 0,"startValue":{"level":20, "color":200}, "currentValue": {"level": 20, "color": 2000}, "targetValue": {"level": None, "color": None}},
+    "FocuseOnWork": {"startTime": 0,"startValue":{"level":20, "color":200}, "currentValue": {"level": 20, "color": 2000}, "targetValue": {"level": 50, "color": 3500}},
     # feel bad
-    "FeelBad": {"startTime": 0,"startValue":{"level":20, "color":200}, "currentValue": {"level": 20, "color": 2000}, "targetValue": {"level": 20, "color": 2000}},
+    "FeelBad": {"startTime": 0,"startValue":{"level":20, "color":200}, "currentValue": {"level": 20, "color": 2000}, "targetValue": {"level": 80, "color": 2500}},
     # feel good
     "FeelGood": {"startTime": 0, "startValue":{"level":20, "color":200},"currentValue": {"level": 20, "color": 2000}, "targetValue": {"level": None, "color": None}},
     # if the user once set the light value, the setted value should not be changed for a while
@@ -61,10 +61,18 @@ class DecideStatus:
         data["currentValue"]["level"] = max(data["currentValue"]["level"],data["targetValue"]["level"])
         data["currentValue"]["color"] = max(data["currentValue"]["color"],data["targetValue"]["color"])
         return data
+    def duringWorkTime(self):
+        currentTime = time.localtime()
+        if currentTime.tm_hour > Configs.WORK_START_TIME and currentTime < Configs.WORK_END_TIME:
+            return True
+        return False
     def decideLight(self, status):
         if self.timeNow == self.timeInterval:
             userStatus = self.getStatus()
             targetValue = UserStatus[userStatus]
+            # if not working time, set the light to help people relax
+            if userStatus == "Tired" and not self.duringWorkTime():
+                targetValue["targetValue"] = {"color":4000, "level":55}
             startTime = time.time()
             currentLight = self.lightHistory[0]["currentValue"]
             self.lightHistory.pop()

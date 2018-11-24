@@ -1,9 +1,14 @@
 import os
 import sys
-def add_path(path):
-    sys.path.insert(0,path)
 
-SERVER_URL = "https://v0wwaqqnpa.execute-api.eu-west-1.amazonaws.com"
+
+def add_path(path):
+    sys.path.insert(0, path)
+
+
+#SERVER_URL = "https://v0wwaqqnpa.execute-api.eu-west-1.amazonaws.com"
+DUMMY = True
+SERVER_URL = "http://192.168.43.44:7001"
 TIME_INTERVAL = 100
 HISTORY_LENGTH = 6
 
@@ -19,5 +24,6 @@ add_path(OCCUPANCY_PATH)
 INDOOR_PATH = "./indoorClimate/"
 add_path(INDOOR_PATH)
 import logging
-logging.basicConfig(level = logging.DEBUG,format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)

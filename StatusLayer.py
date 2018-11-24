@@ -9,7 +9,7 @@ StatusList = [
     "Tired",
     # if the user is focusing on work, then just keep the setting of the light
     # if the user is once detected in focusing status, light status should be caution to change
-    "FouseOnWork",
+    "FocusOnWork",
     # feel bad
     "FeelBad",
     # feel good
@@ -23,7 +23,7 @@ UserStatus = {
     "Tired": {"startTime": 0,"startValue":{"level":20, "color":200}, "current": {"level": 20, "color": 2000}, "targetValue": {"level": 90, "color": 6500}},
     # if the user is focusing on work, then just keep the setting of the light
     # if the user is once detected in focusing status, light status should be caution to change
-    "FocuseOnWork": {"startTime": 0,"startValue":{"level":20, "color":200}, "currentValue": {"level": 20, "color": 2000}, "targetValue": {"level": 50, "color": 3500}},
+    "FocusOnWork": {"startTime": 0,"startValue":{"level":20, "color":200}, "currentValue": {"level": 20, "color": 2000}, "targetValue": {"level": 50, "color": 3500}},
     # feel bad
     "FeelBad": {"startTime": 0,"startValue":{"level":20, "color":200}, "currentValue": {"level": 20, "color": 2000}, "targetValue": {"level": 80, "color": 2500}},
     # feel good
@@ -38,7 +38,7 @@ class DecideStatus:
     def __init__(self,timeInterval,historyLength):
         # record the history user status and light status
         self.timeInterval = 10
-        self.timeNow = 0,
+        self.timeNow = 0
         self.historyLength = 6
         self.lightHistory = [UserStatus["FocusOnWork"]] * self.historyLength
         self.statusPool = ["FocusOnWork"] * self.timeInterval
@@ -69,6 +69,7 @@ class DecideStatus:
     def decideLight(self, status):
         if self.timeNow == self.timeInterval:
             userStatus = self.getStatus()
+            Configs.logger.debug("check userstatus = {}".format(userStatus))
             targetValue = UserStatus[userStatus]
             # if not working time, set the light to help people relax
             if userStatus == "Tired" and not self.duringWorkTime():

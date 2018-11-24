@@ -51,7 +51,8 @@ class Router:
             emotion = dataCollection.get("UserEmotion")
 
             feelGood = emotion[0] + emotion[6]
-            if feelGood >=  0.5 :
+            feelBad = emotion[1] + emotion[2] + emotion[3] + emotion[4] + emotion[5]
+            if feelGood >=  feelBad :
                 self.userStatus["FeelGood"] += 0.1
             else:
                 self.userStatus["FeelBad"] += 0.1

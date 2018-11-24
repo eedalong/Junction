@@ -1,9 +1,8 @@
 import requests
 import json
-import logging
-
-API = {"IntensitySet": "/sites/{siteId}/devices/{deviceId}/level",
-       "ColorSet": "/sites/{siteId}/devices/{deviceId}/color"}
+import Configs
+API = {"IntensitySet": "/V1/sites/{siteId}/devices/{deviceId}/level",
+       "ColorSet": "/V1/sites/{siteId}/devices/{deviceId}/color"}
 
 
 class SendRequest:
@@ -11,7 +10,8 @@ class SendRequest:
         self.url = url
         self.apiKey = apiKey
     def setLightIntensity(self, siteID, deviceID, level):
-        data = {"level": level}
+        Configs.logger.debug("check light level = {}".format(int(level)))
+        data = {"level": int(level)}
         header = {"x-api-key": self.apiKey}
         response = requests.put(url=self.url + API["IntensitySet"].format(siteId=siteID, deviceId=deviceID),
                                 headers = header, json=json.dumps(data))
@@ -23,7 +23,8 @@ class SendRequest:
             print("set level failed  = {}".format(content))
 
     def setLightColor(self,siteID,deviceID,color):
-        data = {"color": color}
+        data = {"color": int(color)}
+        Configs.logger.debug("check light level = {}".format(int(color)))
         header = {"x-api-key": self.apiKey}
         response = requests.put(url=self.url + API["ColorSet"].format(siteId=siteID, deviceId=deviceID),
                                 headers = header,json=json.dumps(data))

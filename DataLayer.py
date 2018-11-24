@@ -12,10 +12,14 @@ class DataLayer:
         dataCollection = {}
         useremotion = UserEmotion.getData(self.siteID,self.sensorID,startTimeStamp,endTimeStamp)
         if useremotion:
-            dataCollection["UserEmotion"] = useremotion
+            dataCollection["UserEmotion"] = useremotion["emotion"]
+            dataCollection["FaceConfidence"] = useremotion["faceConfidence"]
+            dataCollection["Tired"] = useremotion["tired"]
+        '''
         usertired  = UserTired.getData(self.siteID,self.sensorID,startTimeStamp,endTimeStamp)
         if usertired:
             dataCollection["TiredStatus"] = usertired
+        '''
         occupancy = Occupancy.getData(self.siteID,self.sensorID,startTimeStamp,endTimeStamp)
         if Occupancy:
             dataCollection["Occupancy"] = occupancy

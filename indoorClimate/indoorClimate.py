@@ -1,3 +1,5 @@
+#coding:utf-8
+
 import json
 import requests
 
@@ -12,13 +14,13 @@ class IndoorClimate:
 		header = {"x-api-key": key}
 		body = test_data = {"timeDateFrom": timeDateFrom, "timeDateTo": timeDateTo}
 
-		requestUrl = 'https://v0wwaqqnpa.execute-api.eu-west-1.amazonaws.com/V1/sites/%s/sensors/%s/indoorclimate' %(siteID, sensorID)
+		requestUrl = 'https://v0wwaqqnpa.execute-api.eu-west-1.amazonaws.com/V1/sites/%s/sensors/%s/indoorclimate?itemCount=10&startIndex=0' %(siteID, sensorID)
 
 		response = requests.post(requestUrl, headers = header,json = json.dumps(body))
 
 		res = response.json()
 
-		print(res)
+		#print(res)
 		
 		if response.ok:
 			return {
@@ -39,7 +41,7 @@ if __name__ == "__main__":
 	Obj = IndoorClimate(key)
 
 	siteID = "site_exp"
-	sensorID = "b1239623-62b1-4a45-bf5a-b8b62056e372"
+	sensorID = "855f35c3-0dee-4e76-b06c-9e76c9ad08cc"
 	timeDateFrom= "2018-01-08T00:58:00.589234Z"
 	timeDateTo = "2018-01-08T01:58:00.589234Z"
 

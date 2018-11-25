@@ -212,9 +212,9 @@ class UserEmotion():
                                                 "mouthstatus,skinstatus")
         print('Consume {:0f} s'.format(time.time() - tic))
         result = self._result_postprocessing(res)
-        # self._draw_result(frame, res)
-        # cv2.imshow('frame', frame)
-        # cv2.waitKey()
+        self._draw_result(frame, res)
+        cv2.imshow('frame', frame)
+        cv2.waitKey()
         return result
 
     def close(self):

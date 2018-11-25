@@ -3,7 +3,7 @@
 
 # 材料 http://devernay.free.fr/cours/opengl/materials.html
 
-SCREEN_SIZE = (800, 600)
+SCREEN_SIZE = (650, 350)
 
 import multiprocessing
 import os

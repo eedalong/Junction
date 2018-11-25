@@ -22,4 +22,4 @@ def setColor(siteId,deviceId,color):
     bfile.close()
     return json.dumps({"good":color})
 if __name__ == "__main__":
-    app.run(host = "192.168.43.45",port = 7001)
+    app.run(host = "0.0.0.0",port = 7001)

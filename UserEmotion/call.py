@@ -80,12 +80,18 @@ class UserEmotion():
         self.api = API()
         self.eye_state = []
         self.mouth_state = []
+        self.frame_index = 0
         self.state_length = state_length
         self._init_camera()
 
     def _init_camera(self):
         self.cap = cv2.VideoCapture(0)
 
+        fps = self.cap.get(cv2.cv.CV_CAP_PROP_FPS)
+        size = (640,480)
+        self.videoWriter = cv2.VideoWriter()
+        self.videoWriter.open('D:\\Dalong\\sleepy.mp4', cv2.cv.CV_FOURCC('M', 'J', 'P', 'G'), fps, size)
+        print("check if writer is opened now  = {}".format(self.videoWriter.isOpened()))
         #self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640);
         #self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 320);
 
@@ -137,8 +143,8 @@ class UserEmotion():
                         face_landmark[u'left_eye_right_corner'][u'x'], face_landmark[u'left_eye_bottom'][u'y']]
             right_eye_coor = [face_landmark[u'right_eye_left_corner'][u'x'], face_landmark[u'right_eye_top'][u'y'],
                          face_landmark[u'right_eye_right_corner'][u'x'], face_landmark[u'right_eye_bottom'][u'y']]
-            left_eye_ratio = (left_eye_coor[3] - left_eye_coor[1])/float(left_eye_coor[2] - left_eye_coor[0])
-            right_eye_ratio = (right_eye_coor[3] - right_eye_coor[1])/float(right_eye_coor[2] - right_eye_coor[0])
+            left_eye_ratio = (left_eye_coor[3] - left_eye_coor[1])/float(left_eye_coor[2] - left_eye_coor[0] + 0.00001)
+            right_eye_ratio = (right_eye_coor[3] - right_eye_coor[1])/float(right_eye_coor[2] - right_eye_coor[0] + 0.00001)
             eye_ratio = (left_eye_ratio + right_eye_ratio) / 2
             self._eye_state_update(eye_ratio)
             cv2.rectangle(img, (left_eye_coor[0], left_eye_coor[1]), (left_eye_coor[2], left_eye_coor[3]), (255, 0, 0))
@@ -190,11 +196,12 @@ class UserEmotion():
 
     def detect(self):
         # Convert the array image to base64
+
         frame = None
         sample = np.ndarray((4,5))
         while not isinstance(frame,type(sample)):
             ret, frame = self.cap.read()
-
+        save_image = frame.copy()
         retval, buffer = cv2.imencode('.jpg', frame)
         frame_base64 = base64.b64encode(buffer)
         tic = time.time()
@@ -202,12 +209,15 @@ class UserEmotion():
                               return_attributes="gender,age,smiling,headpose,facequality,"
                                                 "blur,eyestatus,emotion,ethnicity,beauty,"
                                                 "mouthstatus,skinstatus")
-        print('Consume {:0f} s'.format(time.time() - tic))
+       # print('Consume {:0f} s'.format(time.time() - tic))
         result = self._result_postprocessing(frame, res)
-        print (result)
-        cv2.imshow('frame', frame)
-        cv2.waitKey()
-        # return result
+        #self.videoWriter.write(save_image)
+        #print (result)
+        cv2.imwrite('D:\\Dalong\\Sleepy\\frame_{}.jpg'.format(self.frame_index), save_image)
+        self.frame_index += 1
+
+        #cv2.waitKey()
+        return result
 
     def close(self):
         self.cap.release()

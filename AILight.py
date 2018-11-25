@@ -7,7 +7,8 @@ import time
 import time
 import pytz
 import datetime
-
+import json
+import copy
 class AILight:
     def __init__(self,server, siteID, sensorID, timeInterval, historyLength):
         self.server = server
@@ -15,7 +16,7 @@ class AILight:
         self.sensorID = sensorID
         self.timeInterval = timeInterval
         self.historyLength = historyLength
-
+        self.data = []
     def local_to_utc(self,local_ts, utc_format='%Y-%m-%dT%H:%M:%S.000Z'):
         local_tz = pytz.timezone('Asia/Chongqing')
         local_format = "%Y-%m-%d %H:%M:%S"
@@ -29,13 +30,29 @@ class AILight:
         router = Router.Router()
         sender = SendRequest.SendRequest(self.server)
         statusLayer = StatusLayer.DecideStatus(self.timeInterval, self.historyLength)
+        frame_index = 0
+        log_file = open("log_file.json","w")
+        all_data = {"data":[]}
+        max_frame = 120
         while True:
             startTime = time.time()
             startTime = self.local_to_utc(startTime)
             dataCollection = dataLayer.collectData(startTime, None)
             currentStatus = router.Route(dataCollection)
             finalValue = statusLayer.decideLight(currentStatus)
-            sender.setLightColor(Configs.SITE_ID,Configs.DEVICE_ID,finalValue["color"])
-            sender.setLightIntensity(Configs.SITE_ID,Configs.DEVICE_ID,finalValue["level"])
-
+            if finalValue["targetValue"]["color"]:
+                sender.setLightColor(Configs.SITE_ID,Configs.DEVICE_ID,finalValue["currentValue"]["color"])
+                sender.setLightIntensity(Configs.SITE_ID,Configs.DEVICE_ID,finalValue["currentValue"]["level"])
+            log_data = {
+                "frame_index":frame_index,
+                "dataCollection":dataCollection,
+                "currentStatus": currentStatus,
+                "finalValue":finalValue
+                }
+            log_file = open("D:\\Dalong\\log_file.json","w")
+            self.data.append(copy.deepcopy(log_data))
+            all_data["data"] = self.data
+            Configs.logger.info("log file length = {}".format(len(all_data["data"])))
+            json.dump(all_data,log_file)
+            log_file.close()
 

@@ -9,7 +9,7 @@ def add_path(path):
 #SERVER_URL = "https://v0wwaqqnpa.execute-api.eu-west-1.amazonaws.com"
 DUMMY = True
 SERVER_URL = "http://192.168.43.44:7001"
-TIME_INTERVAL = 100
+TIME_INTERVAL = 10
 HISTORY_LENGTH = 6
 
 SITE_ID = "site_exp"

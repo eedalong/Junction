@@ -23,13 +23,12 @@ UserStatus = {
     "Tired": {"startTime": 0,"startValue":{"level":20, "color":200}, "current": {"level": 20, "color": 2000}, "targetValue": {"level": 90, "color": 6500}},
     # if the user is focusing on work, then just keep the setting of the light
     # if the user is once detected in focusing status, light status should be caution to change
-    "FocusOnWork": {"startTime": 0,"startValue":{"level":20, "color":200}, "currentValue": {"level": 20, "color": 2000}, "targetValue": {"level": 50, "color": 3500}},
+    "FocusOnWork": {"startTime": 0,"startValue":{"level":50, "color":3500}, "currentValue": {"level": 50, "color": 3500}, "targetValue": {"level": 50, "color": 3500}},
     # feel bad
     "FeelBad": {"startTime": 0,"startValue":{"level":20, "color":200}, "currentValue": {"level": 20, "color": 2000}, "targetValue": {"level": 80, "color": 2500}},
     # feel good
     "FeelGood": {"startTime": 0, "startValue":{"level":20, "color":200},"currentValue": {"level": 20, "color": 2000}, "targetValue": {"level": None, "color": None}},
     # if the user once set the light value, the setted value should not be changed for a while
-    "UserSet": {"startTime": 0,"startValue":{"level":20, "color":200}, "currentValue": {"level": 20, "color": 2000}, "targetValue": {"level": None, "color": None}}
 
 }
 
@@ -42,6 +41,7 @@ class DecideStatus:
         self.historyLength = 6
         self.lightHistory = [UserStatus["FocusOnWork"]] * self.historyLength
         self.statusPool = ["FocusOnWork"] * self.timeInterval
+        self.status = "FocusOnWork"
 
     def getStatus(self):
         global StatusList
@@ -56,10 +56,18 @@ class DecideStatus:
 
     def getValue(self,data):
         wbScore = 0.08
-        data["currentValue"]["level"] +=  data["currentValue"]["level"] * wbScore
-        data["currentValue"]["color"] += data["currentValue"]["color"] * wbScore
-        data["currentValue"]["level"] = max(data["currentValue"]["level"],data["targetValue"]["level"])
-        data["currentValue"]["color"] = max(data["currentValue"]["color"],data["targetValue"]["color"])
+        if data["targetValue"]["level"] < data["currentValue"]["level"]:
+            data["currentValue"]["level"] -=  data["currentValue"]["level"] * wbScore
+            data["currentValue"]["level"] = max(data["currentValue"]["level"], data["targetValue"]["level"])
+        else:
+            data["currentValue"]["level"] += data["currentValue"]["level"] * wbScore
+            data["currentValue"]["level"] = min(data["currentValue"]["level"], data["targetValue"]["level"])
+        if data["targetValue"]["color"] < data["currentValue"]["color"]:
+            data["currentValue"]["color"] -= data["currentValue"]["color"] * wbScore
+            data["currentValue"]["color"] = max(data["currentValue"]["color"],data["targetValue"]["color"])
+        else:
+            data["currentValue"]["color"] += data["currentValue"]["color"] * wbScore
+            data["currentValue"]["color"] = min(data["currentValue"]["color"], data["targetValue"]["color"])
         return data
     def duringWorkTime(self):
         currentTime = time.localtime()
@@ -67,9 +75,11 @@ class DecideStatus:
             return True
         return False
     def decideLight(self, status):
+        Configs.logger.debug("check userstatus = {}".format(self.status))
         if self.timeNow == self.timeInterval:
+            self.timeNow = 0
             userStatus = self.getStatus()
-            Configs.logger.debug("check userstatus = {}".format(userStatus))
+            self.status = userStatus
             targetValue = UserStatus[userStatus]
             # if not working time, set the light to help people relax
             if userStatus == "Tired" and not self.duringWorkTime():
@@ -81,20 +91,26 @@ class DecideStatus:
             targetValue["startValue"] = currentLight
             targetValue["currentValue"] = currentLight
             self.lightHistory.insert(0, targetValue)
-        else:
-            # during the interval
-            # 1. we put the status into the status pool
-            # 2. we update the light status to get to the target status
 
-            #1. put the status into the status pool
-            self.statusPool[self.timeNow] = status
-            self.timeNow += 1
+        # during the interval
+        # 1. we put the status into the status pool
+        # 2. we update the light status to get to the target status
 
-            #2. Get the new value at time t during timeInterval
+        #1. put the status into the status pool
+        self.statusPool[self.timeNow] = status
+        self.timeNow += 1
+
+
+        #2. Get the new value at time t during timeInterval
+        newValue = self.lightHistory[0]
+        if self.status != "FeelGood":
             newValue  = self.getValue(self.lightHistory[0])
-            self.lightHistory[0] = newValue
-            return newValue["currentValue"]
-
+        self.lightHistory[0] = newValue
+        Configs.logger.debug("check  statusPool = {}".format(self.statusPool))
+        Configs.logger.debug("check userstatus = {}".format(self.status))
+        Configs.logger.debug("check  light value = {}".format(newValue))
+        Configs.logger.debug("check timeNow = {}".format(self.timeNow))
+        return newValue
 
 
 

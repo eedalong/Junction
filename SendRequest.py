@@ -19,10 +19,10 @@ class SendRequest:
         self.apiKey = apiKey
     def setLightIntensity(self, siteID, deviceID, level):
         level = int(level)
-        Configs.logger.debug("check light level = {}".format(int(level)))
+        #Configs.logger.debug("check light level = {}".format(int(level)))
         data = {"level": int(level)}
         header = {"x-api-key": self.apiKey}
-        Configs.logger.debug("check body = {}".format(data))
+        #Configs.logger.debug("check body = {}".format(data))
         response = ""
         if Configs.DUMMY:
             response = requests.post(url=self.url + DUMMY_API["IntensitySet"].format(siteId=siteID, deviceId=deviceID,level = level),

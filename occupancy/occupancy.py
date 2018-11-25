@@ -21,7 +21,9 @@ class Occupancy:
 
 			res = response.json()
 
+
 			#print(res)
+
 
 			if response.ok:
 				return res["data"]["occupied"]
